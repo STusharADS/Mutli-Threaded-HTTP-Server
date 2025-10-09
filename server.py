@@ -13,6 +13,25 @@ port = 8080
 interface = "127.0.0.1"
 resources = "resources"
 
+def start_server(port, interface, resource_dir, maxPoolSize=10):
+    global no_of_clients
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.bind((interface, port))
+    sock.listen()
+    with concurrent.futures.ThreadPoolExecutor(max_workers=maxPoolSize) as executor:
+        while True:
+            conn, addr = sock.accept()
+            conn.settimeout(30)
+            lock.acquire()
+            no_of_clients+=1
+            if no_of_clients >= maxPoolSize:
+                print("Thread pool saturated, queing connection")
+                client_que.append((conn, addr))
+            else:
+                executor.submit(handle_client_connection, conn, addr, executor, resource_dir)
+            lock.release()
+
+
 if __name__ == "__main__":
     PORT = port
     INTERFACE = interface
